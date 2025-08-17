@@ -1,0 +1,15 @@
+# Lambda用のDockerfile
+FROM public.ecr.aws/lambda/nodejs:18
+
+# アプリケーションファイルをコピー
+COPY package*.json ${LAMBDA_TASK_ROOT}/
+COPY src/ ${LAMBDA_TASK_ROOT}/src/
+
+# 依存関係をインストール
+RUN npm ci --only=production
+
+# Lambda用のハンドラーファイルを作成
+COPY lambda-handler.js ${LAMBDA_TASK_ROOT}/
+
+# ハンドラーを設定
+CMD [ "lambda-handler.handler" ]

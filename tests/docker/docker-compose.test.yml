@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # LocalStack for AWS services
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - '4566:4566'
+    environment:
+      - SERVICES=dynamodb,s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - '/tmp/localstack:/tmp/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    networks:
+      - test-network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379'
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-test-data:/data
+    networks:
+      - test-network
+
+  # Backend service
+  backend-test:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3000'
+    environment:
+      - NODE_ENV=test
+      - PORT=3000
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - REDIS_URL=redis://redis:6379
+      - DYNAMODB_FAVORITES_TABLE=efootball-favorites-test
+      - DYNAMODB_SEARCH_HISTORY_TABLE=efootball-search-history-test
+    depends_on:
+      - localstack
+      - redis
+    networks:
+      - test-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend service
+  frontend-test:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    ports:
+      - '5174:80'
+    environment:
+      - VITE_API_BASE_URL=http://backend-test:3000
+    depends_on:
+      - backend-test
+    networks:
+      - test-network
+
+  # Integration test runner
+  integration-tests:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.integration
+    environment:
+      - BACKEND_URL=http://backend-test:3000
+      - FRONTEND_URL=http://frontend-test:80
+    depends_on:
+      - backend-test
+      - frontend-test
+    networks:
+      - test-network
+    volumes:
+      - ../integration:/app/tests/integration
+      - ../../node_modules:/app/node_modules
+
+  # E2E test runner
+  e2e-tests:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.e2e
+    environment:
+      - FRONTEND_URL=http://frontend-test:80
+      - BACKEND_URL=http://backend-test:3000
+    depends_on:
+      - backend-test
+      - frontend-test
+    networks:
+      - test-network
+    volumes:
+      - ../e2e:/app/tests/e2e
+      - ../../node_modules:/app/node_modules
+
+volumes:
+  redis-test-data:
+
+networks:
+  test-network:
+    driver: bridge

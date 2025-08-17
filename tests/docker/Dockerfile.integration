@@ -1,0 +1,34 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 必要なパッケージをインストール
+RUN apk add --no-cache curl
+
+# package.jsonをコピーして依存関係をインストール
+COPY package*.json ./
+RUN npm ci --only=production
+
+# テストファイルをコピー
+COPY tests/integration ./tests/integration
+
+# テスト実行用のスクリプトを作成
+RUN echo '#!/bin/sh\n\
+echo "統合テストを開始します..."\n\
+echo "バックエンドサービスの起動を待機中..."\n\
+while ! curl -f http://backend-test:3000/health; do\n\
+  echo "バックエンドの起動を待機中..."\n\
+  sleep 2\n\
+done\n\
+echo "フロントエンドサービスの起動を待機中..."\n\
+while ! curl -f http://frontend-test:80; do\n\
+  echo "フロントエンドの起動を待機中..."\n\
+  sleep 2\n\
+done\n\
+echo "すべてのサービスが起動しました。テストを実行します..."\n\
+npm test -- --testPathPattern=integration\n\
+' > /app/run-tests.sh
+
+RUN chmod +x /app/run-tests.sh
+
+CMD ["/app/run-tests.sh"]

@@ -1,0 +1,5 @@
+# env ファイルはpushしない
+*.env
+
+# .vscode フォルダはpushしない
+.vscode/

@@ -1,0 +1,39 @@
+{
+    "name": "youtube-eafc-player",
+    "version": "1.0.0",
+    "description": "YouTube eFootball Player - 統合動画検索・視聴・管理アプリケーション",
+    "scripts": {
+        "dev": "docker-compose up -d",
+        "dev:build": "docker-compose up --build -d",
+        "stop": "docker-compose down",
+        "clean": "docker-compose down -v --remove-orphans",
+        "logs": "docker-compose logs -f",
+        "logs:backend": "docker-compose logs -f backend",
+        "logs:frontend": "docker-compose logs -f frontend",
+        "test": "cd tests && npm test",
+        "test:integration": "cd tests && npm run test:integration",
+        "test:e2e": "cd tests && npm run test:e2e",
+        "test:all": "cd tests && ./scripts/run-all-tests.sh",
+        "test:docker": "cd tests && npm run test:docker",
+        "setup:localstack": "cd tests && npm run setup:localstack",
+        "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ../tests && npm install"
+    },
+    "keywords": [
+        "youtube",
+        "efootball",
+        "video",
+        "player",
+        "react",
+        "nodejs",
+        "docker"
+    ],
+    "author": "YouTube eFootball Player Team",
+    "license": "MIT",
+    "devDependencies": {
+        "concurrently": "^8.2.0"
+    },
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
+    }
+}

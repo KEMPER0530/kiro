@@ -1,0 +1,35 @@
+FROM mcr.microsoft.com/playwright:v1.40.0-focal
+
+WORKDIR /app
+
+# Node.jsとnpmが既にインストールされているため、直接依存関係をインストール
+COPY package*.json ./
+RUN npm ci
+
+# Playwrightブラウザをインストール
+RUN npx playwright install
+
+# テストファイルをコピー
+COPY tests/e2e ./tests/e2e
+
+# テスト実行用のスクリプトを作成
+RUN echo '#!/bin/bash\n\
+echo "E2Eテストを開始します..."\n\
+echo "フロントエンドサービスの起動を待機中..."\n\
+while ! curl -f http://frontend-test:80; do\n\
+  echo "フロントエンドの起動を待機中..."\n\
+  sleep 2\n\
+done\n\
+echo "バックエンドサービスの起動を待機中..."\n\
+while ! curl -f http://backend-test:3000/health; do\n\
+  echo "バックエンドの起動を待機中..."\n\
+  sleep 2\n\
+done\n\
+echo "すべてのサービスが起動しました。E2Eテストを実行します..."\n\
+cd tests/e2e\n\
+npx playwright test --config=playwright.config.js\n\
+' > /app/run-e2e-tests.sh
+
+RUN chmod +x /app/run-e2e-tests.sh
+
+CMD ["/app/run-e2e-tests.sh"]

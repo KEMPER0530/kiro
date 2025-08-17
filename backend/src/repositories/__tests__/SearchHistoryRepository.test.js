@@ -115,6 +115,28 @@ describe('SearchHistoryRepository', () => {
                 })
             );
         });
+
+        it('should bypass max limit when enforceLimit is false', async () => {
+            mockDocClient.query.mockReturnValue({
+                promise: () => Promise.resolve({
+                    Items: []
+                })
+            });
+
+            await repository.getUserSearchHistory('user-123', 100, false);
+
+            expect(mockDocClient.query).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    TableName: 'efootball-search-history',
+                    KeyConditionExpression: 'userId = :userId',
+                    ExpressionAttributeValues: {
+                        ':userId': 'user-123'
+                    },
+                    ScanIndexForward: false,
+                    Limit: 100
+                })
+            );
+        });
     });
 
     describe('getRecentUniqueQueries', () => {

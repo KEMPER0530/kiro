@@ -63,10 +63,11 @@ class SearchHistoryRepository {
      * @param {number} limit - Maximum number of items to return (default: 10)
      * @returns {Promise<SearchHistory[]>} - Array of search history entries
      */
-    async getUserSearchHistory(userId, limit = 10) {
+    async getUserSearchHistory(userId, limit = 10, enforceLimit = true) {
         try {
+            const queryLimit = enforceLimit ? Math.min(limit, this.maxHistoryItems) : limit;
             if (useMockDb) {
-                const history = await mockDb.getUserSearchHistory(userId, limit);
+                const history = await mockDb.getUserSearchHistory(userId, queryLimit);
                 return history.map(item => SearchHistory.fromDynamoDBItem(item));
             } else {
                 const params = {
@@ -76,7 +77,7 @@ class SearchHistoryRepository {
                         ':userId': userId
                     },
                     ScanIndexForward: false, // Sort by timestamp in descending order (newest first)
-                    Limit: Math.min(limit, this.maxHistoryItems)
+                    Limit: queryLimit
                 };
 
                 const result = await docClient.query(params).promise();
@@ -184,7 +185,7 @@ class SearchHistoryRepository {
      */
     async clearUserSearchHistory(userId) {
         try {
-            const searchHistory = await this.getUserSearchHistory(userId, 100);
+            const searchHistory = await this.getUserSearchHistory(userId, 100, false);
 
             if (searchHistory.length === 0) {
                 return 0;
@@ -230,7 +231,7 @@ class SearchHistoryRepository {
      */
     async cleanupOldEntries(userId) {
         try {
-            const allEntries = await this.getUserSearchHistory(userId, 100);
+            const allEntries = await this.getUserSearchHistory(userId, 100, false);
 
             if (allEntries.length <= this.maxHistoryItems) {
                 return; // No cleanup needed
@@ -281,7 +282,7 @@ class SearchHistoryRepository {
             if (useMockDb) {
                 return await mockDb.getSearchStatistics(userId);
             } else {
-                const searchHistory = await this.getUserSearchHistory(userId, 100);
+                const searchHistory = await this.getUserSearchHistory(userId, 100, false);
 
                 const stats = {
                     totalSearches: searchHistory.length,

@@ -3,6 +3,9 @@ const slowDown = require('express-slow-down');
 
 // Enhanced rate limiting for different endpoints
 const createRateLimit = (windowMs, max, message) => {
+    if (process.env.NODE_ENV !== 'production') {
+        return (req, res, next) => next();
+    }
     return rateLimit({
         windowMs,
         max,
@@ -43,12 +46,14 @@ const generalRateLimit = createRateLimit(
 );
 
 // Speed limiter to slow down requests after threshold
-const speedLimiter = slowDown({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    delayAfter: 50, // allow 50 requests per windowMs without delay
-    delayMs: 500, // add 500ms delay per request after delayAfter
-    maxDelayMs: 20000, // maximum delay of 20 seconds
-});
+const speedLimiter = process.env.NODE_ENV === 'production' ?
+    slowDown({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        delayAfter: 50, // allow 50 requests per windowMs without delay
+        delayMs: 500, // add 500ms delay per request after delayAfter
+        maxDelayMs: 20000, // maximum delay of 20 seconds
+    }) :
+    (req, res, next) => next();
 
 // Input sanitization middleware
 const sanitizeInput = (req, res, next) => {

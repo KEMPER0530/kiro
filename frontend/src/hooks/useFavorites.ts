@@ -29,28 +29,32 @@ export const useFavorites = (): UseFavoritesReturn => {
     return userId;
   };
 
-  // Load favorites operation
-  const loadOperation = useApiOperation(
-    async () => {
-      const userId = getUserId();
-      const response = await apiRequest(
-        () => api.get<{success: boolean, favorites: Favorite[], count: number}>(endpoints.favorites.list, {
-          params: { userId }
-        }),
-        { customErrorMessage: 'お気に入りの読み込み中にエラーが発生しました。' }
-      );
-
-      if (response.success) {
-        return response.favorites;
-      } else {
-        throw new Error('お気に入りの読み込みに失敗しました');
-      }
-    },
-    {
-      customErrorTitle: 'お気に入り読み込みエラー',
-      showErrorToast: true
+  // Fetch favorites API call
+  const fetchFavorites = useCallback(async () => {
+    const userId = getUserId();
+    const response = await apiRequest(
+        () =>
+          api.get<{
+            success: boolean;
+            favorites: Favorite[];
+            count: number;
+          }>(endpoints.favorites.list, {
+            params: { userId },
+          }),
+          { customErrorMessage: 'お気に入りの読み込み中にエラーが発生しました。' }
+    );
+    if (response.success) {
+      return response.favorites;
+    } else {
+      throw new Error('お気に入りの読み込みに失敗しました');
     }
-  );
+  }, []);
+
+  // Load favorites operation
+  const loadOperation = useApiOperation(fetchFavorites, {
+    customErrorTitle: 'お気に入り読み込みエラー',
+    showErrorToast: true,
+  });
 
   // Add favorite operation
   const addOperation = useApiOperation(
@@ -113,7 +117,7 @@ export const useFavorites = (): UseFavoritesReturn => {
       addedAt: new Date().toISOString(),
       video
     };
-    
+
     setFavorites(prev => [...prev, optimisticFavorite]);
 
     try {
@@ -136,7 +140,6 @@ export const useFavorites = (): UseFavoritesReturn => {
   const removeFavorite = useCallback(async (videoId: string) => {
     // Store the favorite for potential rollback
     const removedFavorite = favorites.find(fav => fav.videoId === videoId);
-    
     // Optimistic update
     setFavorites(prev => prev.filter(fav => fav.videoId !== videoId));
 
@@ -153,7 +156,6 @@ export const useFavorites = (): UseFavoritesReturn => {
 
   const toggleFavorite = useCallback(async (video: Video) => {
     const isFavorite = favoriteVideoIds.includes(video.id);
-    
     if (isFavorite) {
       await removeFavorite(video.id);
     } else {
@@ -164,7 +166,8 @@ export const useFavorites = (): UseFavoritesReturn => {
   // Load favorites on mount
   useEffect(() => {
     loadFavorites();
-  }, [loadFavorites]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   return {
     favorites,
